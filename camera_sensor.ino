@@ -29,9 +29,9 @@ void setup() {
     }
 
     // 初始化麦克风
-    if(!init_microphone()){
-      return; // 如果麦克风初始化是吧返回
-    }
+//    if(!init_microphone()){
+//      return; // 如果麦克风初始化失败,返回
+//    }
 
     // 启动 WiFi 管理
     wifiManager.begin(); 
