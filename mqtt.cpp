@@ -1,10 +1,10 @@
 #include "mqtt.h"
 #include "esp_camera.h"  // 如果需要处理摄像头
 #include <WiFi.h>
+#define MQTT_MAX_PACKET_SIZE 1024
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <base64.h>
-#define MQTT_MAX_PACKET_SIZE 50000
 // 定义 MQTT 服务器地址
 const char* mqtt_server = "192.168.6.178";  // 改为在这里定义
 
@@ -14,8 +14,6 @@ const char* mqtt_password = "sensor"; // 在这里定义 MQTT 密码
 
 // 设备的唯一标识符
 String device_id;  // 在这里定义 device_id
-
-
 
 // 获取设备的 MAC 地址
 String getDeviceId() {
@@ -112,23 +110,44 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
                 // 手动构建 JSON 字符串
                 String jsonString = "{\"data\":\"" + base64Image + "\"}";
 
-                // Serial.printf("Manually constructed JSON string length: %d\n", jsonString.length());
+                // 定义分片大小
+                const int CHUNK_SIZE = 1024;  // 每片 1024 字节
+                int totalLength = jsonString.length();
+                int totalChunks = (totalLength + CHUNK_SIZE - 1) / CHUNK_SIZE;  // 计算总分片数
+                Serial.printf("Total length: %d, total chunks: %d\n", totalLength, totalChunks);
 
-                // 打印 jsonString 的前 100 个字符
-                // Serial.println("JSON String (first 100 chars):");
-                // Serial.println(jsonString.substring(0, 100));
+                // 开始发布
+                if (client.beginPublish(photo_data_topic.c_str(), totalLength, false)) {
+                    for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                        // 获取当前分片的数据
+                        int startIdx = chunkIndex * CHUNK_SIZE;
+                        int len = (startIdx + CHUNK_SIZE < totalLength) ? CHUNK_SIZE : totalLength - startIdx;
+                        String chunk = jsonString.substring(startIdx, startIdx + len);
 
-                // 通过 MQTT 发布 JSON 字符串
-                if (client.beginPublish(photo_data_topic.c_str(), jsonString.length(), false)) {
-                    size_t written = client.write((const uint8_t*)jsonString.c_str(), jsonString.length());
+                        // 通过 MQTT 发送每个分片
+                        size_t written = client.write((const uint8_t*)chunk.c_str(), len);
+
+
+                        size_t freeHeap = esp_get_free_heap_size();
+
+                        if (written == len) {
+                            Serial.printf("Chunk %d/%d sent successfully\n", chunkIndex + 1, totalChunks);
+                            Serial.printf("Free heap size: %d bytes\n", freeHeap);
+                        } else {
+                            Serial.printf("Failed to send chunk %d, written: %d, total: %d\n", chunkIndex + 1, written, len);
+                            
+                            Serial.printf("Free heap size: %d bytes\n", freeHeap);
+                            
+                        }
+
+                        delay(5);  // 添加一个小的延时
+                    }
+
                     bool success = client.endPublish();
-                    
-                    if (success && written == jsonString.length()) {
-                        Serial.println("Image sent successfully");
-                        Serial.printf("Sent %d bytes\n", written);
+                    if (success) {
+                        Serial.println("All chunks sent successfully");
                     } else {
-                        Serial.println("Failed to send full image data");
-                        Serial.printf("Written: %d, Total: %d\n", written, jsonString.length());
+                        Serial.println("Failed to end publish");
                     }
                 } else {
                     Serial.println("Failed to begin publish");
@@ -141,4 +160,5 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
             delay(1000);  // 延时 1 秒
         }
     }
+    // 其他逻辑
 }

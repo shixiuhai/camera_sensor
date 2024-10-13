@@ -44,6 +44,6 @@ void loop() {
     client.loop();  // 处理 MQTT 消息
 
     // 示例延时
-    Serial.printf("传感器正在运行中\n");
-    delay(5000);
+//    Serial.printf("传感器正在运行中\n");
+    delay(10);
 }
