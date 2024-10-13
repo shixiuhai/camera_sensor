@@ -1,10 +1,11 @@
 #include "mqtt.h"
 #include "esp_camera.h"  // 如果需要处理摄像头
-#include <WiFi.h>
-#define MQTT_MAX_PACKET_SIZE 1024
+#include "camera.h"
 #include <PubSubClient.h>
+#include <WiFi.h>
 #include <ArduinoJson.h>
 #include <base64.h>
+
 // 定义 MQTT 服务器地址
 const char* mqtt_server = "192.168.6.178";  // 改为在这里定义
 
@@ -49,6 +50,7 @@ PubSubClient client(espClient);
 void setup_mqtt() {
     client.setServer(mqtt_server, 1883);  // 设置 MQTT 服务器
     client.setCallback(mqtt_callback);    // 设置回调函数
+    client.setBufferSize(600000); // 设置缓冲区
 }
 
 // 处理 MQTT 连接
@@ -70,14 +72,16 @@ void mqtt_reconnect() {
     }
 }
 
+
+// 在 mqtt_callback 中调用拍照函数
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
+    // 拍照处理
     if (String(topic) == take_photo_topic) {
         Serial.println("Take photo command received");
 
         // 解析 JSON 数据
         StaticJsonDocument<200> doc;
         DeserializationError error = deserializeJson(doc, payload, length);
-
         if (error) {
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(error.f_str());
@@ -87,78 +91,27 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
         int photo_count = doc["count"];  // 获取需要拍照的数量
         Serial.printf("Taking %d photos\n", photo_count);
 
-        // 拍照并发送照片数据
-        for (int i = 0; i < photo_count; i++) {
-            camera_fb_t *fb = esp_camera_fb_get();  // 获取摄像头的图像帧
-            if (!fb) {
-                Serial.println("Failed to get camera frame buffer");
-                return;
-            }
-
-            Serial.printf("Frame buffer acquired: %d bytes\n", fb->len);
-
-            // 将图像数据编码为 Base64
-            String base64Image = base64::encode(fb->buf, fb->len);
-
-            Serial.printf("Base64 encoded length: %d\n", base64Image.length());
-
-            if (base64Image.length() > 0) {
-                // 打印 base64Image 的前 100 个字符
-                Serial.println("Base64 Image (first 100 chars):");
-                Serial.println(base64Image.substring(0, 100));
-
-                // 手动构建 JSON 字符串
-                String jsonString = "{\"data\":\"" + base64Image + "\"}";
-
-                // 定义分片大小
-                const int CHUNK_SIZE = 1024;  // 每片 1024 字节
-                int totalLength = jsonString.length();
-                int totalChunks = (totalLength + CHUNK_SIZE - 1) / CHUNK_SIZE;  // 计算总分片数
-                Serial.printf("Total length: %d, total chunks: %d\n", totalLength, totalChunks);
-
-                // 开始发布
-                if (client.beginPublish(photo_data_topic.c_str(), totalLength, false)) {
-                    for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-                        // 获取当前分片的数据
-                        int startIdx = chunkIndex * CHUNK_SIZE;
-                        int len = (startIdx + CHUNK_SIZE < totalLength) ? CHUNK_SIZE : totalLength - startIdx;
-                        String chunk = jsonString.substring(startIdx, startIdx + len);
-
-                        // 通过 MQTT 发送每个分片
-                        size_t written = client.write((const uint8_t*)chunk.c_str(), len);
-
-
-                        size_t freeHeap = esp_get_free_heap_size();
-
-                        if (written == len) {
-                            Serial.printf("Chunk %d/%d sent successfully\n", chunkIndex + 1, totalChunks);
-                            Serial.printf("Free heap size: %d bytes\n", freeHeap);
-                        } else {
-                            Serial.printf("Failed to send chunk %d, written: %d, total: %d\n", chunkIndex + 1, written, len);
-                            
-                            Serial.printf("Free heap size: %d bytes\n", freeHeap);
-                            
-                        }
-
-                        delay(5);  // 添加一个小的延时
-                    }
-
-                    bool success = client.endPublish();
-                    if (success) {
-                        Serial.println("All chunks sent successfully");
-                    } else {
-                        Serial.println("Failed to end publish");
-                    }
-                } else {
-                    Serial.println("Failed to begin publish");
-                }
-            } else {
-                Serial.println("Base64 encoding failed");
-            }
-
-            esp_camera_fb_return(fb);  // 释放帧缓冲
-            delay(1000);  // 延时 1 秒
-        }
+        // 调用拍照并发送照片的函数
+        take_and_send_photo(client, photo_data_topic, photo_count);
     }
-    // 其他逻辑
+    // 音频处理
+    if (String(topic) == take_voice_topic) {
+        Serial.println("Take voice command received");
+
+        // 解析 JSON 数据
+        StaticJsonDocument<200> doc;
+        DeserializationError error = deserializeJson(doc, payload, length);
+        if (error) {
+            Serial.print(F("deserializeJson() failed: "));
+            Serial.println(error.f_str());
+            return;
+        }
+
+        int duration = doc["duration"];  // 获取录音时长
+        int count = doc["count"];        // 获取录音次数
+        Serial.printf("Recording voice for %d seconds, %d times\n", duration, count);
+
+        // 调用录音并发送音频数据的函数
+        record_and_send_voice(client, voice_data_topic, duration, count);
+    }
 }

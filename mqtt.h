@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>     // 包含 ArduinoJson 库，用于处理 JSON 数据
 #include "base64.h"          // 包含 Base64 库，用于处理 Base64 编码和解码
 #include <WiFi.h>
+#include "voice.h"  // 添加此行确保包含 voice.h
 
 // MQTT 服务器的 IP 地址或主机名
 extern const char* mqtt_server; // 改为 extern，确保在其他文件中可以访问
