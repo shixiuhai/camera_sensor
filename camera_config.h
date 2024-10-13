@@ -2,7 +2,6 @@
 #ifndef CAMERA_CONFIG_H
 #define CAMERA_CONFIG_H
 #define CAMERA_MODEL_XIAO_ESP32S3
-//#include "esp_camera.h"
 #include "camera_pins.h"
 
 camera_config_t get_camera_config() {
@@ -47,6 +46,17 @@ camera_config_t get_camera_config() {
   }
 
   return config;
+}
+
+// 新增函数进行摄像头初始化
+bool init_camera() {
+  camera_config_t config = get_camera_config();  // 获取摄像头配置
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+      Serial.printf("Camera init failed with error 0x%x\n", err);
+      return false;  // 返回失败
+  }
+  return true;  // 返回成功
 }
 
 #endif // CAMERA_CONFIG_H

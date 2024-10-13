@@ -23,15 +23,14 @@ void setup() {
         return;  // 如果 SD 卡初始化失败，返回
     }
 
-    wifiManager.begin(); // 启动 WiFi 管理
-
-    camera_config_t config = get_camera_config();  // 获取摄像头配置
-    esp_err_t err = esp_camera_init(&config);
-    if (err != ESP_OK) {
-        Serial.printf("Camera init failed with error 0x%x", err);
-        return;
+    // 初始化摄像头
+    if (!init_camera()) {
+        return;  // 如果摄像头初始化失败，返回
     }
 
+    // 启动 WiFi 管理
+    wifiManager.begin(); 
+    
     // 设置和连接 MQTT
     setup_mqtt();
 
@@ -45,6 +44,6 @@ void loop() {
     client.loop();  // 处理 MQTT 消息
 
     // 示例延时
-    Serial.printf("Success\n");
+    Serial.printf("传感器正在运行中\n");
     delay(5000);
 }

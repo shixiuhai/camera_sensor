@@ -4,7 +4,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <base64.h>
-
+#define MQTT_MAX_PACKET_SIZE 50000
 // 定义 MQTT 服务器地址
 const char* mqtt_server = "192.168.6.178";  // 改为在这里定义
 
@@ -97,32 +97,48 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
                 return;
             }
 
+            Serial.printf("Frame buffer acquired: %d bytes\n", fb->len);
+
             // 将图像数据编码为 Base64
             String base64Image = base64::encode(fb->buf, fb->len);
 
-            // 创建 JSON 对象并将 Base64 字符串放入其中
-            StaticJsonDocument<300> jsonDoc;
-            jsonDoc["data"] = base64Image;
+            Serial.printf("Base64 encoded length: %d\n", base64Image.length());
 
-            // 将 JSON 对象序列化为字符串
-            String jsonString;
-            serializeJson(jsonDoc, jsonString);
+            if (base64Image.length() > 0) {
+                // 打印 base64Image 的前 100 个字符
+                Serial.println("Base64 Image (first 100 chars):");
+                Serial.println(base64Image.substring(0, 100));
 
-            // 通过 MQTT 发布 JSON 字符串
-            if (client.publish(photo_data_topic.c_str(), jsonString.c_str())) {
-                Serial.println("Image sent successfully");
+                // 手动构建 JSON 字符串
+                String jsonString = "{\"data\":\"" + base64Image + "\"}";
+
+                // Serial.printf("Manually constructed JSON string length: %d\n", jsonString.length());
+
+                // 打印 jsonString 的前 100 个字符
+                // Serial.println("JSON String (first 100 chars):");
+                // Serial.println(jsonString.substring(0, 100));
+
+                // 通过 MQTT 发布 JSON 字符串
+                if (client.beginPublish(photo_data_topic.c_str(), jsonString.length(), false)) {
+                    size_t written = client.write((const uint8_t*)jsonString.c_str(), jsonString.length());
+                    bool success = client.endPublish();
+                    
+                    if (success && written == jsonString.length()) {
+                        Serial.println("Image sent successfully");
+                        Serial.printf("Sent %d bytes\n", written);
+                    } else {
+                        Serial.println("Failed to send full image data");
+                        Serial.printf("Written: %d, Total: %d\n", written, jsonString.length());
+                    }
+                } else {
+                    Serial.println("Failed to begin publish");
+                }
             } else {
-                Serial.println("Failed to send image");
+                Serial.println("Base64 encoding failed");
             }
 
             esp_camera_fb_return(fb);  // 释放帧缓冲
             delay(1000);  // 延时 1 秒
         }
     }
-
-    // 语音录制指令的处理逻辑
-    // if (String(topic) == take_voice_topic) {
-    //     Serial.println("Take voice command received");
-    //     // 解析并处理语音录制指令
-    // }
 }
