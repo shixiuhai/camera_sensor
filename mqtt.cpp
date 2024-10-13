@@ -73,7 +73,7 @@ void mqtt_reconnect() {
 }
 
 
-// 在 mqtt_callback 中调用拍照函数
+// 在 mqtt_callback 中调用回调函数
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     // 拍照处理
     if (String(topic) == take_photo_topic) {
