@@ -5,9 +5,73 @@
 #include <ArduinoJson.h>
 #include <base64.h>
 
-// ...（其他代码保持不变）...
+// 定义 MQTT 服务器地址
+const char* mqtt_server = "192.168.6.178";  // 改为在这里定义
 
-// MQTT 回调函数，处理接收到的消息
+// 定义 MQTT 用户名和密码
+const char* mqtt_user = "sensor";     // 在这里定义 MQTT 用户名
+const char* mqtt_password = "sensor"; // 在这里定义 MQTT 密码
+
+// 设备的唯一标识符
+String device_id;  // 在这里定义 device_id
+
+
+
+// 获取设备的 MAC 地址
+String getDeviceId() {
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+    char macStr[18];  // 17 字符 + 1 个终止符
+    sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return String(macStr);  // 将 MAC 地址转换为 String 类型并返回
+}
+
+// 生成客户端 ID
+String generateClientId() {
+    String prefix = "sensor";  // 您可以自定义前缀
+    String deviceType = "camera";  // 设备类型
+    String deviceSerial = getDeviceId();  // 设备序列号
+    String clientId = prefix + "-" + deviceType + "-" + deviceSerial;  // 生成客户端 ID
+    return clientId;
+}
+
+
+// MQTT 主题配置，使用设备 ID 构建不同的主题
+const String client_id = generateClientId();
+const String take_photo_topic = "/sensor-camera/" + client_id + "/take-photo";   // 拍照指令主题
+const String photo_data_topic = "/sensor-camera/" + client_id + "/photo-data";   // 照片数据主题
+const String take_voice_topic = "/sensor-camera/" + client_id + "/take-voice";   // 语音录制指令主题
+const String voice_data_topic = "/sensor-camera/" + client_id + "/voice-data";   // 语音数据主题
+
+// 定义 WiFiClient 和 PubSubClient 实例
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// 设置 MQTT 客户端和订阅主题
+void setup_mqtt() {
+    client.setServer(mqtt_server, 1883);  // 设置 MQTT 服务器
+    client.setCallback(mqtt_callback);    // 设置回调函数
+}
+
+// 处理 MQTT 连接
+void mqtt_reconnect() {
+    while (!client.connected()) {
+        Serial.print("Attempting MQTT connection...");
+        // 连接到 MQTT 服务器，添加用户名和密码
+        if (client.connect(client_id.c_str(), mqtt_user, mqtt_password)) {
+            Serial.println("connected");
+            // 订阅拍照和录音指令的主题
+            client.subscribe(take_photo_topic.c_str());
+            client.subscribe(take_voice_topic.c_str());
+        } else {
+            Serial.print("failed, rc=");
+            Serial.print(client.state());
+            Serial.println(" try again in 5 seconds");
+            delay(5000);  // 连接失败，5秒后重试
+        }
+    }
+}
+
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     if (String(topic) == take_photo_topic) {
         Serial.println("Take photo command received");
