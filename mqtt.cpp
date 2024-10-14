@@ -37,10 +37,10 @@ String generateClientId() {
 
 // MQTT 主题配置，使用设备 ID 构建不同的主题
 const String client_id = generateClientId();
-const String take_photo_topic = "/sensor-camera/" + client_id + "/take-photo";   // 拍照指令主题
-const String photo_data_topic = "/sensor-camera/" + client_id + "/photo-data";   // 照片数据主题
-const String take_voice_topic = "/sensor-camera/" + client_id + "/take-voice";   // 语音录制指令主题
-const String voice_data_topic = "/sensor-camera/" + client_id + "/voice-data";   // 语音数据主题
+const String take_photo_topic = "sensor-camera/" + client_id + "/take-photo";   // 拍照指令主题
+const String photo_data_topic = "sensor-camera/" + client_id + "/photo-data";   // 照片数据主题
+const String take_voice_topic = "sensor-camera/" + client_id + "/take-voice";   // 语音录制指令主题
+const String voice_data_topic = "sensor-camera/" + client_id + "/voice-data";   // 语音数据主题
 
 // 定义 WiFiClient 和 PubSubClient 实例
 WiFiClient espClient;
