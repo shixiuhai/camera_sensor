@@ -7,11 +7,6 @@
 #include "mqtt.h"           // 引入 MQTT 配置
 #include "sd_config.h"      // 引入 SD 卡配置
 
-unsigned long lastCaptureTime = 0; // 上次拍照时间
-int imageCount = 1;                // 文件计数
-bool camera_sign = false;          // 摄像头状态
-bool sd_sign = false;              // SD卡状态
-
 WiFiManager wifiManager; // 实例化 WiFi 管理对象
 
 void setup() {
@@ -49,6 +44,6 @@ void loop() {
     client.loop();  // 处理 MQTT 消息
 
     // 示例延时
-//    Serial.printf("传感器正在运行中\n");
-    delay(10);
+    // Serial.printf("传感器正在运行中\n");
+    delay(500);
 }
