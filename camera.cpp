@@ -63,36 +63,46 @@ bool init_camera() {
     return true;  // 返回成功
 }
 
+// 获取帧缓冲并处理图像数据的函数
+bool capture_and_process_image(PubSubClient& client, const String& photo_data_topic) {
+    camera_fb_t *fb = esp_camera_fb_get();  // 获取摄像头的图像帧
+    if (!fb) {
+        Serial.println("Failed to get camera frame buffer");
+        return false;  // 返回失败
+    }
+
+    Serial.printf("Frame buffer acquired: %d bytes\n", fb->len);
+
+    // 将图像数据编码为 Base64
+    String base64Image = base64::encode(fb->buf, fb->len);  // 获取 Base64 编码的结果
+    Serial.printf("Base64 encoded length: %d\n", base64Image.length());
+
+    if (base64Image.length() > 0) {
+        // 构建 JSON 字符串
+        String jsonString = "{\"data\":\"" + base64Image + "\"}";  // 使用 String 构建 JSON
+
+        // 发布到 MQTT 主题
+        if (client.publish(photo_data_topic.c_str(), jsonString.c_str())) {
+            Serial.println("Photo sent successfully");
+        } else {
+            Serial.println("Failed to send photo");
+        }
+    } else {
+        Serial.println("Base64 encoding failed");
+    }
+
+    esp_camera_fb_return(fb);  // 释放帧缓冲
+    return true;  // 返回成功
+}
+
 // 拍照并发送照片的函数
 void take_and_send_photo(PubSubClient& client, const String& photo_data_topic, int photo_count) {
     for (int i = 0; i < photo_count; i++) {
-        camera_fb_t *fb = esp_camera_fb_get();  // 获取摄像头的图像帧
-        if (!fb) {
-            Serial.println("Failed to get camera frame buffer");
-            return;
+        if (!capture_and_process_image(client, photo_data_topic)) {
+            // 如果图像处理失败，选择是否退出或重试
+            Serial.println("Failed to capture and process image");
+            continue;  // 或者可以选择继续下一次循环
         }
-
-        Serial.printf("Frame buffer acquired: %d bytes\n", fb->len);
-
-        // 将图像数据编码为 Base64
-        String base64Image = base64::encode(fb->buf, fb->len);  // 获取 Base64 编码的结果
-        Serial.printf("Base64 encoded length: %d\n", base64Image.length());
-
-        if (base64Image.length() > 0) {
-            // 构建 JSON 字符串
-            String jsonString = "{\"data\":\"" + base64Image + "\"}";  // 使用 String 构建 JSON
-
-            // 发布到 MQTT 主题
-            if (client.publish(photo_data_topic.c_str(), jsonString.c_str())) {
-                Serial.println("Photo sent successfully");
-            } else {
-                Serial.println("Failed to send photo");
-            }
-        } else {
-            Serial.println("Base64 encoding failed");
-        }
-
-        esp_camera_fb_return(fb);  // 释放帧缓冲
         delay(500);  // 延时 500 毫秒
     }
 }

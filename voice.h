@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <PubSubClient.h>  // 用于 MQTT 通信
-#include "driver/i2s.h"    // 用于 ESP32 的 I2S 驱动
+#include <ESP_I2S.h>      // 使用 ESP_I2S 库
 
 // 麦克风初始化函数声明
 bool init_microphone();
