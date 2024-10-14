@@ -59,7 +59,10 @@ void record_and_send_voice(PubSubClient& client, const String& voice_data_topic,
             } else {
                 Serial.println("Failed to send voice data");
             }
-        }
+        }else{
+          
+          Serial.println("Voice data is empty");
+         }
 
         // 录音之间的间隔
         delay(1000);

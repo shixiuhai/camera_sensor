@@ -109,9 +109,9 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
         int duration = doc["duration"];  // 获取录音时长
         int count = doc["count"];        // 获取录音次数
-        Serial.printf("Recording voice for %d seconds, %d times\n", duration, count);
-
+        
         // 调用录音并发送音频数据的函数
-//        record_and_send_voice(client, voice_data_topic, duration, count);
+        record_and_send_voice(client, voice_data_topic, duration, count);
+        Serial.printf("Recording voice for %d seconds, %d times\n", duration, count);
     }
 }
