@@ -17,6 +17,8 @@ VOICE_DATA_TOPIC = 'sensor-camera/sensor-camera-20:B2:CE:3F:01:00/voice-data'
 def on_message(client, userdata, msg):
     try:
         # 尝试解析 JSON 数据
+        print(len(msg.payload))
+        # print(msg.payload)
         json_data = json.loads(msg.payload)
         # print(f"Received message: {json_data}")
         print(msg.topic)
@@ -24,6 +26,7 @@ def on_message(client, userdata, msg):
         if msg.topic == PHOTO_DATA_TOPIC:
             
             base64_image = json_data['data']
+            
             image_data = base64.b64decode(base64_image)
 
             # 保存为图像文件
@@ -34,7 +37,9 @@ def on_message(client, userdata, msg):
 
         # 处理音频数据
         elif msg.topic == VOICE_DATA_TOPIC:
+            # print(json_data)
             base64_audio = json_data['data']
+            # print(base64_audio)
             audio_data = base64.b64decode(base64_audio)
 
             # 保存为音频文件
