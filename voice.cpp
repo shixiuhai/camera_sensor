@@ -16,7 +16,6 @@ bool init_microphone() {
     return true;
 }
 
-
 // 获取当前可用堆内存
 uint32_t get_free_heap() {
     return esp_get_free_heap_size();
@@ -33,7 +32,8 @@ void record_and_send_voice(PubSubClient& client, const String& voice_data_topic,
     for (int i = 0; i < count; i++) {
         Serial.printf("Starting recording %d of %d\n", i + 1, count);
         
-        String base64Audio = "";
+        // 创建一个动态数组，用于保存所有的 PCM 数据
+        std::vector<int16_t> full_audio_data;
         int samples_read = 0;
         int buffer_fill = 0;  // 记录缓冲区中填充的数据量
         while (samples_read < total_samples) {
@@ -43,8 +43,8 @@ void record_and_send_voice(PubSubClient& client, const String& voice_data_topic,
                     buffer[buffer_fill++] = I2S.read();
                     samples_read++;
                     if (buffer_fill >= buffer_size) {
-                        // 将缓冲区中的数据编码为 Base64
-                        base64Audio += base64::encode((uint8_t*)buffer, buffer_fill * bytes_per_sample);
+                        // 将缓冲区中的数据添加到 full_audio_data 中
+                        full_audio_data.insert(full_audio_data.end(), buffer, buffer + buffer_fill);
                         buffer_fill = 0;  // 清空缓冲区
                     }
                 }
@@ -56,10 +56,15 @@ void record_and_send_voice(PubSubClient& client, const String& voice_data_topic,
         }
         // 处理缓冲区中剩余的数据
         if (buffer_fill > 0) {
-            base64Audio += base64::encode((uint8_t*)buffer, buffer_fill * bytes_per_sample);
+            full_audio_data.insert(full_audio_data.end(), buffer, buffer + buffer_fill);
         }
+
         Serial.println("Recording finished. Encoding and sending data...");
+
+        // 将所有的 PCM 数据编码为 Base64
+        String base64Audio = base64::encode((uint8_t*)full_audio_data.data(), full_audio_data.size() * bytes_per_sample);
         Serial.printf("Base64 encoded length: %d\n", base64Audio.length());
+        
         // 将 Base64 编码的数据封装成 JSON 字符串并通过 MQTT 发送
         if (base64Audio.length() > 0) {
             String jsonString = "{\"data\":\"" + base64Audio + "\"}";
@@ -71,7 +76,6 @@ void record_and_send_voice(PubSubClient& client, const String& voice_data_topic,
             }
 
             Serial.printf("JSON free_heap: %d\n", get_free_heap());
-            
             
             // 发布到 MQTT 主题
             if (client.publish(voice_data_topic.c_str(), jsonString.c_str())) {
