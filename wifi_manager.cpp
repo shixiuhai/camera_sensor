@@ -139,10 +139,22 @@ void WiFiManager::startConfigMode() {
 
 // 处理根路径请求
 void WiFiManager::handleRoot() {
-    String page = "<html><body><h1>WiFi配置</h1>";
+    String page = "<html><head>";
+    page += "<style>";
+    page += "body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }";
+    page += "h1 { color: #333; }";
+    page += "form { background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); }";
+    page += "input[type='text'], input[type='password'] { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }";
+    page += "input[type='submit'] { background-color: #4CAF50; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer; }";
+    page += "input[type='submit']:hover { background-color: #45a049; }";
+    page += "a { text-decoration: none; color: #007BFF; }";
+    page += "a:hover { text-decoration: underline; }";
+    page += "</style>";
+    page += "</head><body>";
+    page += "<h1>WiFi配置</h1>";
     page += "<form action='/config' method='POST'>";
-    page += "SSID: <input type='text' name='ssid'><br>";
-    page += "密码: <input type='password' name='password'><br>";
+    page += "SSID: <input type='text' name='ssid' required><br>";
+    page += "密码: <input type='password' name='password' required><br>";
     page += "<input type='submit' value='保存'>";
     page += "</form>";
     page += "<br><a href='/status'>检查状态</a>";

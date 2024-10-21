@@ -50,7 +50,7 @@ PubSubClient client(espClient);
 void setup_mqtt() {
     client.setServer(mqtt_server, 1883);  // 设置 MQTT 服务器
     client.setCallback(mqtt_callback);    // 设置回调函数
-    client.setBufferSize(600000); // 设置缓冲区
+    client.setBufferSize(1000000); // 设置缓冲区
 }
 
 // 处理 MQTT 连接
