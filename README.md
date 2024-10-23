@@ -1,4 +1,4 @@
-# camera_sensor
+# camera_sensor ESP32-XIAO-S3
 esp32 xiao s3 的mqtt命令下发控制程序
 # 使用方案
 * 连接esp32 xiao s3 的ap热点
